@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="日程表">
+<link rel="manifest" href="/manifest.json">
+<title>📅 智能日程表</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0b0b18;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:#fff;overflow-x:hidden;min-height:100vh;padding-bottom:100px}
+
+.setup-page{max-width:480px;margin:0 auto;padding:40px 20px 60px}
+.setup-page h1{font-size:26px;text-align:center;margin-bottom:8px}
+.sub{text-align:center;color:#666;font-size:14px;margin-bottom:20px}
+.mode-tabs{display:flex;border-radius:14px;overflow:hidden;margin-bottom:20px;background:rgba(255,255,255,.04)}
+.mode-tab{flex:1;padding:12px;text-align:center;cursor:pointer;font-size:14px;color:#666;border:none;background:none;font-family:inherit;transition:.2s}
+.mode-tab.active{background:rgba(30,144,255,.2);color:#fff;font-weight:bold}
+.section-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.section-hd h3{font-size:16px}
+.add-block-btn{background:rgba(30,144,255,.15);border:none;color:#1e90ff;font-size:13px;padding:6px 14px;border-radius:16px;cursor:pointer;font-family:inherit}
+.block-item{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,.03);border-radius:12px;transition:.2s}
+.block-item .b-icon{font-size:22px;width:30px;text-align:center;flex-shrink:0}
+.block-item .b-info{flex:1;min-width:0}
+.block-item .b-name{font-size:14px}
+.block-item .b-times{display:flex;align-items:center;gap:6px;margin-top:4px}
+.block-item .b-times input[type=time]{background:rgba(255,255,255,.08);border:none;color:#fff;font-size:13px;padding:5px 8px;border-radius:8px;width:92px;font-family:inherit;outline:none}
+.block-item .b-times input[type=time]:focus{box-shadow:0 0 0 2px rgba(30,144,255,.3)}
+.block-item .b-times span{font-size:12px;color:#555}
+.block-item .b-del{width:28px;height:28px;border-radius:50%;background:rgba(255,75,75,.1);border:none;color:#ff4b4b;cursor:pointer;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.cat-manage-item{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:rgba(255,255,255,.03);border-radius:12px;font-size:14px}
+.cat-manage-item .icon{font-size:20px;width:28px;text-align:center}
+.cat-manage-item .name{flex:1}
+.cat-manage-item .slots{font-size:11px;color:#888}
+.cat-manage-item .act{font-size:16px;cursor:pointer;padding:4px 6px;opacity:.5}
+.cat-manage-item .act:hover{opacity:1}
+.btn{display:block;width:100%;padding:14px;border-radius:14px;border:none;font-size:16px;font-weight:bold;cursor:pointer;font-family:inherit;transition:.2s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,#1e90ff,#00bfff);color:#fff;margin-top:20px}
+.btn-outline{background:rgba(255,255,255,.06);color:#ccc;margin-top:8px}
+
+/* 主界面 */
+.main-page{display:none;max-width:500px;margin:0 auto}
+.main-page.show{display:block}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(15,15,30,.95);backdrop-filter:blur(10px);padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.topbar-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.topbar-row h2{font-size:20px}
+.topbar-btns{display:flex;gap:6px}
+.tb-btn{background:rgba(255,255,255,.08);border:none;color:#ccc;font-size:12px;padding:5px 12px;border-radius:14px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.tb-btn.active,.tb-btn:active{background:rgba(30,144,255,.25);color:#fff}
+.date-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.date-row::-webkit-scrollbar{display:none}
+.di{flex-shrink:0;width:46px;height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:12px;background:rgba(255,255,255,.03);color:#777;transition:.2s}
+.di.active{background:rgba(30,144,255,.22);color:#fff;font-weight:bold}
+.di.today{box-shadow:inset 0 0 0 1.5px #1e90ff}
+.di .dow{font-size:10px}.di .dday{font-size:18px;font-weight:bold}
+
+.timeline{padding:16px;position:relative}
+.timeline::before{content:'';position:absolute;left:36px;top:40px;bottom:20px;width:2px;background:rgba(255,255,255,.06)}
+.fixed-block{margin-bottom:4px;position:relative;padding-left:52px;min-height:36px;display:flex;align-items:center}
+.fixed-block .dot{position:absolute;left:28px;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:1}
+.fb-sleep{background:rgba(100,100,255,.2)}.fb-sleep .dot{background:#6366f1}
+.fb-food{background:rgba(255,180,50,.15)}.fb-food .dot{background:#f59e0b}
+.fb-work{background:rgba(100,180,255,.12)}.fb-work .dot{background:#3b82f6}
+.fb-custom{background:rgba(180,180,180,.08)}.fb-custom .dot{background:#888}
+.fixed-block .fb-body{flex:1;font-size:13px;padding:8px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
+.fixed-block .fb-name{font-size:14px;font-weight:500}
+.fixed-block .fb-time{font-size:12px;color:#888}
+.task-card{position:relative;padding-left:52px;display:flex;align-items:center;min-height:44px;margin-bottom:4px;cursor:pointer}
+.task-card .t-dot{position:absolute;left:28px;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;z-index:1}
+.task-card .t-body{flex:1;padding:10px 14px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;transition:.2s}
+.task-card .t-body:active{filter:brightness(.85)}
+.task-card .t-name{font-size:14px;font-weight:500;margin-right:8px}
+.task-card .t-right{display:flex;align-items:center;gap:10px}
+.task-card .t-time{font-size:12px;color:#888;white-space:nowrap;flex-shrink:0}
+.task-card .t-done{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:.2s}
+.task-card .t-done:hover{border-color:#2ed573}
+.task-card.done .t-body{opacity:.4}
+.task-card.done .t-name{text-decoration:line-through}
+.task-card.done .t-done{background:#2ed573;border-color:#2ed573;color:#fff}
+.empty-tl{text-align:center;padding:60px 20px;color:#444;line-height:1.8}
+
+.panel-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:30;display:none}
+.panel-overlay.show{display:block}
+.panel{position:fixed;bottom:0;left:0;right:0;background:#16162e;border-radius:24px 24px 0 0;z-index:31;padding:24px 20px 40px;transform:translateY(100%);transition:transform .35s ease;max-height:85vh;overflow-y:auto}
+.panel.show{transform:translateY(0)}
+.panel h3{text-align:center;font-size:18px;margin-bottom:20px}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.cat-item{padding:14px 8px;border-radius:14px;text-align:center;cursor:pointer;border:2px solid transparent;transition:.2s;background:rgba(255,255,255,.04);font-family:inherit;color:#ccc;font-size:13px}
+.cat-item:active{transform:scale(.95)}
+.cat-item.selected{border-color:#1e90ff;background:rgba(30,144,255,.15);color:#fff}
+.cat-item .c-icon{font-size:28px;margin-bottom:4px;display:block}
+.dur-row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;align-items:center}
+.dur-chip{padding:8px 16px;border-radius:20px;border:none;background:rgba(255,255,255,.06);color:#ccc;font-size:14px;cursor:pointer;font-family:inherit;transition:.2s}
+.dur-chip:active,.dur-chip.selected{background:#1e90ff;color:#fff}
+.dur-custom{background:rgba(255,255,255,.06);border:none;border-radius:20px;color:#fff;font-size:14px;padding:8px 14px;width:80px;text-align:center;outline:none;font-family:inherit}
+.dur-custom:focus{box-shadow:0 0 0 2px rgba(30,144,255,.3)}
+.panel .btn-row{display:flex;gap:10px;margin-top:16px}
+.panel .btn{flex:1;margin-top:0}
+
+.stats-line{display:flex;gap:16px;padding:0 16px 12px;overflow-x:auto}
+.stat-chip{flex-shrink:0;padding:6px 14px;border-radius:20px;background:rgba(255,255,255,.04);font-size:12px;color:#aaa;white-space:nowrap}
+.stat-chip .n{color:#ffd700;font-weight:bold}
+.fab{position:fixed;bottom:28px;right:24px;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#1e90ff,#00bfff);border:none;color:#fff;font-size:28px;cursor:pointer;box-shadow:0 8px 24px rgba(30,144,255,.4);z-index:15;display:flex;align-items:center;justify-content:center}
+.fab:active{transform:scale(.9)}
+.hidden{display:none!important}
+
+/* 空闲缝隙 */
+.free-gap{display:flex;align-items:stretch;min-height:32px;margin:2px 0}
+.gap-line{width:2px;background:rgba(255,215,0,.2);margin:0 17px;flex-shrink:0;border-radius:1px}
+.gap-body{flex:1;display:flex;align-items:center;gap:10px;padding:4px 12px;font-size:12px;flex-wrap:wrap}
+.gap-dur{color:#ffd700;white-space:nowrap}
+.gap-sug{color:#666;font-size:11px}
+/* 食物推荐 */
+.food-rec{font-size:12px;color:#f59e0b;cursor:pointer;white-space:nowrap;margin-left:8px;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,.1);transition:.2s}
+.food-rec:hover,.food-rec:active{background:rgba(245,158,11,.2);color:#fbbf24}
+/* 设置页食物管理 */
+.food-section{margin-top:20px}
+.food-section h4{font-size:15px;margin-bottom:8px}
+.food-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.food-tag{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:14px;background:rgba(255,255,255,.04);font-size:13px}
+.food-tag .del{width:18px;height:18px;border-radius:50%;background:rgba(255,75,75,.12);border:none;color:#ff4b4b;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.add-food-row{display:flex;gap:6px}
+.add-food-row input{flex:1;background:rgba(255,255,255,.06);border:none;border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;font-family:inherit;outline:none}
+.add-food-row input:focus{box-shadow:0 0 0 2px rgba(30,144,255,.3)}
+.add-food-row button{padding:8px 16px;border-radius:10px;border:none;background:#1e90ff;color:#fff;font-size:13px;cursor:pointer;font-family:inherit}
+
+/* 添加块弹窗 */
+.simple-dlg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e1e3a;border-radius:20px;padding:28px 22px;z-index:40;width:300px;display:none;border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.simple-dlg.show{display:block}
+.simple-dlg h4{text-align:center;margin-bottom:16px;font-size:17px}
+.simple-dlg input,.simple-dlg select{width:100%;background:rgba(255,255,255,.06);border:none;border-radius:12px;padding:12px;color:#fff;font-size:15px;margin-bottom:10px;font-family:inherit;outline:none}
+.simple-dlg select option{background:#1a1a3e;color:#fff}
+.simple-dlg .row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.simple-dlg .row input{flex:1;margin-bottom:0}
+.simple-dlg .row span{font-size:12px;color:#555}
+</style>
+</head>
+<body>
+
+<!-- =================== 设置页 =================== -->
+<div id="setupPage" class="setup-page">
+  <h1>🧠 智能日程表</h1>
+  <div class="sub">告诉我你的作息，我帮你安排一切</div>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchSetupMode('workday')" id="tabWorkday">💼 工作日</button>
+    <button class="mode-tab" onclick="switchSetupMode('weekend')" id="tabWeekend">🏖️ 休息日</button>
+  </div>
+
+  <div id="setupBlockList"></div>
+
+  <h3 style="margin-top:28px;font-size:16px">📂 分类管理</h3>
+  <div class="sub">设置任务类型和偏好时段</div>
+  <div id="setupCats"></div>
+
+  <div class="food-section">
+    <h4>🍗 午饭推荐列表</h4>
+    <div class="food-tags" id="foodLunchTags"></div>
+    <div class="add-food-row"><input id="addLunchFood" placeholder="加一个，如：🍖 红烧排骨"><button onclick="addFood('lunch')">＋</button></div>
+    <h4 style="margin-top:16px">🥗 晚饭推荐列表</h4>
+    <div class="food-tags" id="foodDinnerTags"></div>
+    <div class="add-food-row"><input id="addDinnerFood" placeholder="加一个，如：🥒 凉拌黄瓜"><button onclick="addFood('dinner')">＋</button></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="saveSettings()">✅ 完成设置，进入日程</button>
+</div>
+
+<!-- =================== 添加块弹窗 =================== -->
+<div class="panel-overlay" id="blockOverlay" onclick="closeBlockDlg()"></div>
+<div class="simple-dlg" id="blockDlg">
+  <h4 id="blockDlgTitle">添加固定时间</h4>
+  <input type="text" id="blockDlgName" placeholder="名称（如：接孩子）" maxlength="20">
+  <input type="text" id="blockDlgIcon" placeholder="图标（如：🏫）" maxlength="4" value="📌">
+  <select id="blockDlgType"><option value="custom">🎨 自定义</option><option value="sleep">😴 睡眠</option><option value="food">🍽️ 用餐</option><option value="work">💼 工作</option></select>
+  <div class="row">
+    <input type="time" id="blockDlgStart" value="09:00">
+    <span>至</span>
+    <input type="time" id="blockDlgEnd" value="10:00">
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-outline" onclick="closeBlockDlg()" style="flex:1">取消</button>
+    <button class="btn btn-primary" onclick="saveBlockDlg()" style="flex:1;margin-top:0">保存</button>
+  </div>
+</div>
+
+<!-- =================== 主界面 =================== -->
+<div id="mainPage" class="main-page">
+  <div class="topbar">
+    <div class="topbar-row">
+      <h2>📅 我的日程</h2>
+      <div class="topbar-btns">
+        <button class="tb-btn" id="btnMode" onclick="toggleDayMode()">💼 工作</button>
+        <button class="tb-btn" onclick="openSetupPage()">⚙️</button>
+      </div>
+    </div>
+    <div class="date-row" id="dateRow"></div>
+  </div>
+  <div class="stats-line" id="statsLine"></div>
+  <div class="timeline" id="timeline"></div>
+  <button class="fab" onclick="openAddPanel()">+</button>
+</div>
+
+<!-- =================== 添加任务面板 =================== -->
+<div class="panel-overlay" id="panelOverlay" onclick="closeAddPanel()"></div>
+<div class="panel" id="addPanel">
+  <h3>添加任务</h3>
+  <div style="font-size:13px;color:#888;margin-bottom:12px">选择分类</div>
+  <div class="cat-grid" id="catGrid"></div>
+  <div style="font-size:13px;color:#888;margin-bottom:8px">时长</div>
+  <div class="dur-row" id="durRow">
+    <button class="dur-chip" onclick="selectDur(15)" data-dur="15">15m</button>
+    <button class="dur-chip selected" onclick="selectDur(30)" data-dur="30">30m</button>
+    <button class="dur-chip" onclick="selectDur(60)" data-dur="60">1h</button>
+    <button class="dur-chip" onclick="selectDur(90)" data-dur="90">1.5h</button>
+    <button class="dur-chip" onclick="selectDur(120)" data-dur="120">2h</button>
+    <button class="dur-chip" onclick="selectDur(180)" data-dur="180">3h</button>
+    <input class="dur-custom" id="durCustom" type="number" placeholder="自定义(m)" min="5" max="480" onchange="selectDur(parseInt(this.value)||0)">
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-outline" onclick="closeAddPanel()" style="margin-top:0">取消</button>
+    <button class="btn btn-primary" onclick="goSchedule()" style="margin-top:0">🎯 自动安排</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ==================== 默认数据 ====================
+const DEF_WORKDAY_BLOCKS=[
+  {name:'睡觉',icon:'😴',start:'23:00',end:'07:00',type:'sleep'},
+  {name:'早餐',icon:'🥐',start:'07:30',end:'08:00',type:'food'},
+  {name:'上午班',icon:'☀️',start:'09:00',end:'12:00',type:'work'},
+  {name:'午休',icon:'🍱',start:'12:00',end:'13:00',type:'food'},
+  {name:'下午班',icon:'🌤️',start:'13:00',end:'18:00',type:'work'},
+  {name:'晚饭',icon:'🍽️',start:'18:30',end:'19:00',type:'food'},
+];
+const DEF_WEEKEND_BLOCKS=[
+  {name:'睡觉',icon:'😴',start:'00:00',end:'09:00',type:'sleep'},
+  {name:'早餐',icon:'🥐',start:'09:30',end:'10:00',type:'food'},
+  {name:'午饭',icon:'🍱',start:'12:00',end:'13:00',type:'food'},
+  {name:'晚饭',icon:'🍽️',start:'18:30',end:'19:00',type:'food'},
+];
+const DEF_CATS=[
+  {id:'study',name:'学习',icon:'📚',prefer:['morning_slot','evening_slot','any']},
+  {id:'sport',name:'运动',icon:'🏃',prefer:['early_morning','evening_slot','any']},
+  {id:'fun',name:'娱乐',icon:'🎮',prefer:['evening_slot','afternoon_slot','any']},
+  {id:'chore',name:'家务',icon:'🧹',prefer:['any']},
+  {id:'social',name:'社交',icon:'💬',prefer:['afternoon_slot','evening_slot','any']},
+  {id:'shop',name:'购物',icon:'🛒',prefer:['afternoon_slot','any']},
+];
+const DEF_FOOD_LUNCH=['🍗 黄焖鸡','🍜 麻辣烫','🍝 兰州拉面','🥡 盖浇饭','🍔 汉堡套餐','🍲 螺蛳粉','🍛 煲仔饭','🌯 煎饼果子','🥟 饺子','🍖 红烧肉饭','🍱 日式便当','🌮 墨西哥卷'];
+const DEF_FOOD_DINNER=['🥗 鸡胸肉沙拉','🐟 清蒸鱼+蔬菜','🥣 蔬菜汤面','🥚 蒸蛋+西兰花','🍎 水果燕麦碗','🫕 粥+小菜','🥬 水煮菜蘸料','🍶 酸奶+坚果','🍠 蒸紫薯+鸡蛋','🥒 凉拌黄瓜鸡丝','🍵 荞麦面','🥘 番茄豆腐汤'];
+
+// ==================== 数据层 ====================
+let data={workdayBlocks:[...DEF_WORKDAY_BLOCKS],weekendBlocks:[...DEF_WEEKEND_BLOCKS],cats:[...DEF_CATS],foodLunch:[...DEF_FOOD_LUNCH],foodDinner:[...DEF_FOOD_DINNER],foodToday:{},tasks:[],setupDone:false,_overrides:{}};
+let selectedDate='',selectedCat=null,selectedDur=30,isWorkday=true;
+let setupMode='workday'; let blockEditIdx=-1;
+
+function todayStr(){const d=new Date();return ymd(d)}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function minOf(s){if(!s)return 0;const p=s.split(':');return parseInt(p[0])*60+parseInt(p[1])}
+function fmtMin(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
+function isWeekend(ds){const d=new Date(ds+'T00:00:00');return d.getDay()===0||d.getDay()===6}
+
+function load(){
+  try{const d=JSON.parse(localStorage.getItem('smart_schedule_v2'));
+    if(d&&d.setupDone!==undefined){data=d;}
+    else{resetData()}
+  }catch(e){resetData()}
+  if(!data._overrides)data._overrides={};
+  if(!data.foodLunch)data.foodLunch=[...DEF_FOOD_LUNCH];
+  if(!data.foodDinner)data.foodDinner=[...DEF_FOOD_DINNER];
+  if(!data.foodToday)data.foodToday={};
+  ensureFoodToday();
+}
+function resetData(){
+  data={workdayBlocks:[...DEF_WORKDAY_BLOCKS],weekendBlocks:[...DEF_WEEKEND_BLOCKS],cats:[...DEF_CATS],foodLunch:[...DEF_FOOD_LUNCH],foodDinner:[...DEF_FOOD_DINNER],foodToday:{},tasks:[],setupDone:false,_overrides:{}};
+}
+function ensureFoodToday(){
+  if(!data.foodToday)data.foodToday={};
+  const td=todayStr();
+  if(data.foodToday._date!==td){
+    data.foodToday={_date:td,lunch:pickRandom(data.foodLunch||DEF_FOOD_LUNCH),dinner:pickRandom(data.foodDinner||DEF_FOOD_DINNER)};
+    save();
+  }
+}
+function pickRandom(arr){return arr&&arr.length?arr[Math.floor(Math.random()*arr.length)]:'🍽️'}
+function rerollFood(meal){
+  if(meal==='lunch')data.foodToday.lunch=pickRandom(data.foodLunch||DEF_FOOD_LUNCH);
+  else data.foodToday.dinner=pickRandom(data.foodDinner||DEF_FOOD_DINNER);
+  save();renderTimeline();
+}
+function save(){localStorage.setItem('smart_schedule_v2',JSON.stringify(data))}
+
+// ==================== 固定时间块 ====================
+function getBlocks(ds){
+  const wkend=isWeekend(ds);
+  if(data._overrides&&data._overrides[ds]==='workday')return (data.workdayBlocks||DEF_WORKDAY_BLOCKS);
+  if(data._overrides&&data._overrides[ds]==='weekend')return (data.weekendBlocks||DEF_WEEKEND_BLOCKS);
+  const blks=wkend?(data.weekendBlocks||DEF_WEEKEND_BLOCKS):(data.workdayBlocks||DEF_WORKDAY_BLOCKS);
+  return blks;
+}
+
+function getFixedBlocks(ds){
+  const blks=getBlocks(ds);
+  const result=[];
+  for(const b of blks){
+    if(!b.start||!b.end)continue;
+    const sm=minOf(b.start),em=minOf(b.end);
+    if(sm===em)continue;
+    if(sm<em){result.push({start:sm,end:em,type:b.type||'custom',name:(b.icon||'📌')+' '+b.name,icon:b.icon||'📌'})}
+    else{result.push({start:sm,end:24*60,type:b.type||'custom',name:(b.icon||'📌')+' '+b.name,icon:b.icon||'📌'});result.push({start:0,end:em,type:b.type||'custom',name:(b.icon||'📌')+' '+b.name,icon:b.icon||'📌'})}
+  }
+  return result.sort((a,b)=>a.start-b.start);
+}
+
+function getFreeSlots(blocks,tasksForDay){
+  const busy=[];
+  for(const b of blocks)busy.push({start:b.start,end:b.end});
+  for(const t of tasksForDay)if(!t.done)busy.push({start:minOf(t.startTime),end:minOf(t.endTime)});
+  busy.sort((a,b)=>a.start-b.start);
+  const merged=[];for(const b of busy){if(merged.length&&b.start<=merged[merged.length-1].end)merged[merged.length-1].end=Math.max(merged[merged.length-1].end,b.end);else merged.push({start:b.start,end:b.end})}
+  const free=[];let cursor=0;
+  for(const m of merged){if(cursor<m.start)free.push({start:cursor,end:m.start});cursor=m.end}
+  if(cursor<24*60)free.push({start:cursor,end:24*60});
+  return free;
+}
+
+// ==================== 智能排程 ====================
+function findBestSlot(ds,durMin,catId){
+  const blocks=getFixedBlocks(ds);
+  const dayTasks=(data.tasks||[]).filter(t=>t.date===ds);
+  const free=getFreeSlots(blocks,dayTasks);
+  const cat=(data.cats||DEF_CATS).find(c=>c.id===catId)||{prefer:['any']};
+  const prefs=cat.prefer||['any'];
+  const prefRanges={early_morning:{start:5*60,end:8*60},morning_slot:{start:7*60,end:12*60},afternoon_slot:{start:12*60,end:18*60},evening_slot:{start:18*60,end:23*60},any:{start:0,end:24*60}};
+  const candidates=[];
+  for(const f of free){
+    if(f.end-f.start>=durMin){
+      for(let st=f.start;st+durMin<=f.end;st+=15)candidates.push({start:st,end:st+durMin});
+    }
+  }
+  if(!candidates.length)return null;
+  function overlapScore(st,en,pref){const p=prefRanges[pref];if(!p)return 0;return Math.max(0,Math.min(en,p.end)-Math.max(st,p.start))}
+  let best=null,bestScore=-1;
+  for(const c of candidates){
+    let score=0;
+    for(const pref of prefs)score+=overlapScore(c.start,c.end,pref);
+    if(prefs.includes('weekend')&&isWeekend(ds))score+=durMin;
+    if(c.start%60===0)score+=5;
+    if(score>bestScore){bestScore=score;best=c}
+  }
+  return best;
+}
+function goSchedule(){
+  if(!selectedCat){alert('请先选择一个分类');return}
+  if(!selectedDur||selectedDur<5){alert('请选择时长');return}
+  scheduleTask(selectedCat,selectedDur);
+}
+function scheduleTask(catId,dur){
+  const ds=selectedDate;
+  const best=findBestSlot(ds,dur,catId);
+  if(!best)return alert('这一天没有足够的时间了 😅');
+  const cat=(data.cats||DEF_CATS).find(c=>c.id===catId)||{};
+  data.tasks.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),date:ds,catId,title:cat.name,icon:cat.icon,startTime:fmtMin(best.start),endTime:fmtMin(best.end),dur,done:false});
+  save();renderTimeline();closeAddPanel();
+  if(navigator.vibrate)navigator.vibrate(20);
+}
+
+// ==================== 设置页 ====================
+function switchSetupMode(mode){
+  setupMode=mode;
+  document.getElementById('tabWorkday').classList.toggle('active',mode==='workday');
+  document.getElementById('tabWeekend').classList.toggle('active',mode==='weekend');
+  renderSetupBlocks();
+}
+function renderSetupBlocks(){
+  const blks=setupMode==='workday'?(data.workdayBlocks||DEF_WORKDAY_BLOCKS):(data.weekendBlocks||DEF_WEEKEND_BLOCKS);
+  let html='<div class="section-hd"><h3>🕐 时间安排</h3><button class="add-block-btn" onclick="openAddBlock()">＋ 添加</button></div>';
+  for(let i=0;i<blks.length;i++){
+    const b=blks[i];
+    html+='<div class="block-item">'+
+      '<span class="b-icon">'+escH(b.icon||'📌')+'</span>'+
+      '<div class="b-info"><div class="b-name">'+escH(b.name)+'</div>'+
+        '<div class="b-times"><input type="time" value="'+(b.start||'')+'" onchange="updateBlockTime('+i+',\'start\',this.value)"><span>至</span>'+
+        '<input type="time" value="'+(b.end||'')+'" onchange="updateBlockTime('+i+',\'end\',this.value)"></div>'+
+      '</div>'+
+      '<button class="b-del" onclick="deleteBlock('+i+')">✕</button>'+
+    '</div>';
+  }
+  document.getElementById('setupBlockList').innerHTML=html;
+  renderFoodTags();
+}
+function updateBlockTime(idx,key,val){
+  const blks=setupMode==='workday'?data.workdayBlocks:data.weekendBlocks;
+  if(!blks)return;
+  blks[idx][key]=val;
+}
+function deleteBlock(idx){
+  const blks=setupMode==='workday'?data.workdayBlocks:data.weekendBlocks;
+  if(!blks||blks.length<=1)return alert('至少保留一个时间块');
+  blks.splice(idx,1);renderSetupBlocks();
+}
+function openAddBlock(){
+  blockEditIdx=-1;
+  document.getElementById('blockDlgTitle').textContent='添加固定时间';
+  document.getElementById('blockDlgName').value='';
+  document.getElementById('blockDlgIcon').value='📌';
+  document.getElementById('blockDlgType').value='custom';
+  document.getElementById('blockDlgStart').value='09:00';
+  document.getElementById('blockDlgEnd').value='10:00';
+  document.getElementById('blockDlg').classList.add('show');
+  document.getElementById('blockOverlay').classList.add('show');
+}
+function closeBlockDlg(){
+  document.getElementById('blockDlg').classList.remove('show');
+  document.getElementById('blockOverlay').classList.remove('show');
+}
+function saveBlockDlg(){
+  const name=document.getElementById('blockDlgName').value.trim()||'新事项';
+  const icon=document.getElementById('blockDlgIcon').value.trim()||'📌';
+  const type=document.getElementById('blockDlgType').value;
+  const start=document.getElementById('blockDlgStart').value;
+  const end=document.getElementById('blockDlgEnd').value;
+  if(!start||!end)return alert('请设置开始和结束时间');
+  const blks=setupMode==='workday'?data.workdayBlocks:data.weekendBlocks;
+  if(!blks)return;
+  blks.push({name,icon,start,end,type});
+  blks.sort((a,b)=>a.start.localeCompare(b.start));
+  renderSetupBlocks();closeBlockDlg();
+}
+
+function renderSetupCats(){
+  const div=document.getElementById('setupCats');if(!div)return;
+  const cats=data.cats||DEF_CATS;
+  const prefNames={early_morning:'清晨',morning_slot:'上午',afternoon_slot:'下午',evening_slot:'晚上',any:'任意',weekend:'周末'};
+  let html='';
+  for(const c of cats){
+    html+='<div class="cat-manage-item"><span class="icon">'+c.icon+'</span><span class="name">'+c.name+'</span><span class="slots">偏好: '+(c.prefer||[]).map(p=>prefNames[p]||p).join(', ')+'</span>'+
+      (cats.length>2?'<span class="act" onclick="deleteCat(\''+c.id+'\')">🗑️</span>':'')+'</div>';
+  }
+  html+='<button class="btn btn-outline" onclick="addCustomCat()">➕ 添加自定义分类</button>';
+  div.innerHTML=html;
+  renderFoodTags();
+}
+function renderFoodTags(){
+  const lunchDiv=document.getElementById('foodLunchTags');
+  const dinnerDiv=document.getElementById('foodDinnerTags');
+  if(!lunchDiv||!dinnerDiv)return;
+  const lunch=data.foodLunch||DEF_FOOD_LUNCH;
+  const dinner=data.foodDinner||DEF_FOOD_DINNER;
+  lunchDiv.innerHTML=lunch.map((f,i)=>'<span class="food-tag">'+escH(f)+'<button class="del" onclick="delFood(\'lunch\','+i+')">✕</button></span>').join('');
+  dinnerDiv.innerHTML=dinner.map((f,i)=>'<span class="food-tag">'+escH(f)+'<button class="del" onclick="delFood(\'dinner\','+i+')">✕</button></span>').join('');
+}
+function addFood(meal){
+  const input=document.getElementById('add'+(meal==='lunch'?'Lunch':'Dinner')+'Food');
+  const val=input.value.trim();if(!val)return;
+  const arr=meal==='lunch'?data.foodLunch:data.foodDinner;
+  if(!arr.includes(val))arr.push(val);
+  input.value='';save();renderFoodTags();
+}
+function delFood(meal,idx){
+  const arr=meal==='lunch'?data.foodLunch:data.foodDinner;
+  if(arr.length<=1)return alert('至少保留一道');
+  arr.splice(idx,1);save();renderFoodTags();
+}
+function deleteCat(id){
+  if((data.cats||DEF_CATS).length<=2)return alert('至少保留2个分类');
+  data.cats=data.cats.filter(c=>c.id!==id);save();renderSetupCats();
+}
+function addCustomCat(){
+  const name=prompt('分类名称（如：弹琴）');if(!name)return;
+  const icon=prompt('选择一个图标（如：🎹）','✏️');if(!icon)return;
+  const prefStr=prompt('偏好时段（逗号分隔）:\nearly_morning/ morning_slot/ afternoon_slot/ evening_slot/ any','any');
+  const prefer=prefStr?prefStr.split(',').map(s=>s.trim()).filter(Boolean):['any'];
+  data.cats.push({id:'c'+Date.now().toString(36),name,icon:icon||'✏️',prefer});save();renderSetupCats();
+}
+
+function saveSettings(){data.setupDone=true;save();document.getElementById('setupPage').style.display='none';document.getElementById('mainPage').classList.add('show');selectedDate=todayStr();isWorkday=!isWeekend(selectedDate);renderAll()}
+function openSetupPage(){document.getElementById('mainPage').classList.remove('show');document.getElementById('setupPage').style.display='block';setupMode=isWorkday?'workday':'weekend';switchSetupMode(setupMode);renderSetupCats()}
+
+// ==================== 主界面 ====================
+function renderAll(){
+  renderDateRow();renderTimeline();renderStats();
+  isWorkday=!isWeekend(selectedDate);
+  if(data._overrides&&data._overrides[selectedDate]==='workday')isWorkday=true;
+  if(data._overrides&&data._overrides[selectedDate]==='weekend')isWorkday=false;
+  document.getElementById('btnMode').textContent=isWorkday?'💼 工作':'🏖️ 休息';
+}
+function renderDateRow(){
+  const row=document.getElementById('dateRow');let html='';const td=new Date();
+  for(let i=-3;i<=10;i++){const d=new Date(td);d.setDate(d.getDate()+i);const ds=ymd(d);const isToday=ds===todayStr();
+    html+='<div class="di'+(ds===selectedDate?' active':'')+(isToday?' today':'')+'" onclick="selectDate(\''+ds+'\')">'+
+      '<span class="dow">'+['日','一','二','三','四','五','六'][d.getDay()]+'</span><span class="dday">'+d.getDate()+'</span></div>'}
+  row.innerHTML=html;
+  setTimeout(()=>{const el=row.querySelector('.today');if(el)el.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'})},100);
+}
+function selectDate(ds){selectedDate=ds;renderAll()}
+function toggleDayMode(){
+  if(!data._overrides)data._overrides={};
+  const prev=data._overrides[selectedDate];
+  if(prev==='workday')data._overrides[selectedDate]='weekend';
+  else if(prev==='weekend')delete data._overrides[selectedDate];
+  else data._overrides[selectedDate]=isWeekend(selectedDate)?'workday':'weekend';
+  save();renderAll();
+}
+
+function renderTimeline(){
+  const tl=document.getElementById('timeline');
+  const ds=selectedDate;
+  const blocks=getFixedBlocks(ds);
+  const dayTasks=(data.tasks||[]).filter(t=>t.date===ds).sort((a,b)=>a.startTime.localeCompare(b.startTime));
+  ensureFoodToday();
+  
+  const allItems=[];
+  for(const b of blocks)allItems.push({...b,isFixed:true});
+  for(const t of dayTasks)allItems.push({...t,isFixed:false,start:minOf(t.startTime),end:minOf(t.endTime)});
+  allItems.sort((a,b)=>a.start-b.start);
+  
+  // 计算空闲缝隙
+  const busy=[];for(const b of blocks)busy.push({start:b.start,end:b.end});
+  for(const t of dayTasks)if(!t.done)busy.push({start:minOf(t.startTime),end:minOf(t.endTime)});
+  busy.sort((a,b)=>a.start-b.start);
+  const merged=[];for(const b of busy){if(merged.length&&b.start<=merged[merged.length-1].end)merged[merged.length-1].end=Math.max(merged[merged.length-1].end,b.end);else merged.push({start:b.start,end:b.end})}
+  const freeGaps=[];let cursor=0;
+  for(const m of merged){if(cursor<m.start)freeGaps.push({start:cursor,end:m.start});cursor=m.end}
+  if(cursor<24*60)freeGaps.push({start:cursor,end:24*60});
+  
+  // 为每个缝隙推荐最多2个最适合的分类
+  const cats=data.cats||DEF_CATS;
+  function gapSuggestions(gap){
+    const dur=gap.end-gap.start;
+    if(dur<15)return'';
+    const fits=[];
+    for(const c of cats){
+      const minDur={study:20,sport:20,fun:20,chore:10,social:30,shop:30}[c.id]||15;
+      if(dur>=minDur)fits.push({cat:c,score:(c.prefer||[]).includes('any')?1:2});
+    }
+    fits.sort((a,b)=>b.score-a.score);
+    const top=fits.slice(0,2);
+    if(!top.length)return'';
+    return '可安排 '+top.map(f=>f.cat.icon+' '+f.cat.name).join(' 丨 ');
+  }
+  
+  // 构建带缝隙的混合列表
+  const mixed=[];let gapIdx=0;
+  function addGapBefore(nextStart){
+    while(gapIdx<freeGaps.length&&freeGaps[gapIdx].end<=nextStart){
+      const g=freeGaps[gapIdx];
+      const dur=g.end-g.start;
+      if(dur>=5){ // 至少5分钟才显示
+        const sug=gapSuggestions(g);
+        const durStr=dur>=60?(dur/60).toFixed(1)+'小时':dur+'分钟';
+        mixed.push({isGap:true,start:g.start,end:g.end,durStr,suggestion:sug});
+      }
+      gapIdx++;
+    }
+  }
+  for(const item of allItems){
+    addGapBefore(item.start);
+    mixed.push(item);
+  }
+  addGapBefore(24*60+1);
+  
+  let html='';
+  if(!mixed.length)html='<div class="empty-tl">🎉 今天没有任何安排<br/><span style="font-size:13px">点右下角 + 添加任务</span></div>';
+  
+  for(const item of mixed){
+    if(item.isGap){
+      html+='<div class="free-gap"><div class="gap-line"></div><div class="gap-body"><span class="gap-dur">🕐 '+item.durStr+'空闲</span>'+
+        (item.suggestion?'<span class="gap-sug">'+item.suggestion+'</span>':'')+'</div></div>';
+    }else if(item.isFixed){
+      const cls='fb-'+item.type;
+      // 检查是否是午饭/晚饭，加入食物推荐
+      let foodHtml='';
+      if(item.type==='food'&&(item.name.includes('午饭')||item.name.includes('午休'))){
+        const f=data.foodToday.lunch||'🍽️';
+        foodHtml='<span class="food-rec" onclick="event.stopPropagation();rerollFood(\'lunch\')" title="换一个">🍽️ 午饭推荐：'+f+' 🔄</span>';
+      }else if(item.type==='food'&&item.name.includes('晚饭')){
+        const f=data.foodToday.dinner||'🍽️';
+        foodHtml='<span class="food-rec" onclick="event.stopPropagation();rerollFood(\'dinner\')" title="换一个">🍽️ 晚饭推荐：'+f+' 🔄</span>';
+      }
+      html+='<div class="fixed-block '+cls+'"><div class="dot">'+item.icon+'</div><div class="fb-body"><span class="fb-name">'+item.name+'</span>'+
+        (foodHtml?foodHtml:'<span class="fb-time">'+fmtMin(item.start)+' - '+fmtMin(item.end)+'</span>')+'</div></div>';
+    }else{
+      const doneClass=item.done?' done':'';
+      html+='<div class="task-card'+doneClass+'" id="task-'+item.id+'">'+
+        '<div class="t-dot" style="background:'+getCatColor(item.catId)+'"></div>'+
+        '<div class="t-body" style="background:'+getCatBg(item.catId)+'" onclick="editTask(\''+item.id+'\')">'+
+          '<span class="t-name">'+item.icon+' '+item.title+'</span>'+
+          '<span class="t-right"><span class="t-time">'+item.startTime+' - '+item.endTime+'</span>'+
+          '<span class="t-done" onclick="event.stopPropagation();toggleDone(\''+item.id+'\')">✓</span></span>'+
+        '</div></div>';
+    }
+  }
+  tl.innerHTML=html;
+}
+function getCatColor(catId){
+  const m={'study':'#6366f1','sport':'#22c55e','fun':'#f59e0b','chore':'#94a3b8','social':'#ec4899','shop':'#06b6d4'};
+  return m[catId]||'#888';
+}
+function getCatBg(catId){
+  const m={'study':'rgba(99,102,241,.1)','sport':'rgba(34,197,94,.1)','fun':'rgba(245,158,11,.1)','chore':'rgba(148,163,184,.1)','social':'rgba(236,72,153,.1)','shop':'rgba(6,182,212,.1)'};
+  return m[catId]||'rgba(255,255,255,.04)';
+}
+function toggleDone(id){const t=data.tasks.find(t=>t.id===id);if(!t)return;t.done=!t.done;save();renderTimeline();renderStats();if(navigator.vibrate)navigator.vibrate(10)}
+function editTask(id){
+  const t=data.tasks.find(t=>t.id===id);if(!t)return;
+  if(confirm('「'+t.title+'」 '+t.startTime+'-'+t.endTime+'\n\n要删除吗？')){data.tasks=data.tasks.filter(t=>t.id!==id);save();renderTimeline();renderStats()}
+}
+function renderStats(){
+  const dayTasks=(data.tasks||[]).filter(t=>t.date===selectedDate);
+  const done=dayTasks.filter(t=>t.done).length;
+  const totalDur=dayTasks.reduce((s,t)=>s+(t.dur||0),0);
+  document.getElementById('statsLine').innerHTML='<span class="stat-chip">✅ <span class="n">'+done+'</span>/'+dayTasks.length+' 完成</span><span class="stat-chip">⏱️ <span class="n">'+(totalDur/60).toFixed(1)+'h</span></span>';
+}
+
+// ==================== 添加面板 ====================
+function openAddPanel(){
+  selectedCat=(data.cats||DEF_CATS)[0]?.id||'study';selectedDur=30;
+  document.getElementById('panelOverlay').classList.add('show');
+  document.getElementById('addPanel').classList.add('show');
+  renderCatGrid();renderDurChips();
+}
+function closeAddPanel(){
+  document.getElementById('panelOverlay').classList.remove('show');
+  document.getElementById('addPanel').classList.remove('show');
+}
+function renderCatGrid(){
+  const grid=document.getElementById('catGrid');let html='';
+  for(const c of(data.cats||DEF_CATS)){
+    html+='<button class="cat-item'+(selectedCat===c.id?' selected':'')+'" onclick="pickCat(\''+c.id+'\')"><span class="c-icon">'+c.icon+'</span>'+c.name+'</button>';
+  }
+  html+='<button class="cat-item" onclick="closeAddPanel();openSetupPage()" style="border:1px dashed rgba(255,255,255,.15)"><span class="c-icon">➕</span>管理</button>';
+  grid.innerHTML=html;
+}
+function pickCat(id){selectedCat=id;renderCatGrid()}
+function selectDur(d){selectedDur=d;renderDurChips()}
+function renderDurChips(){
+  document.querySelectorAll('#durRow .dur-chip').forEach(c=>{const v=parseInt(c.dataset.dur);c.classList.toggle('selected',v===selectedDur&&!isNaN(v))});
+  document.getElementById('durCustom').value=(selectedDur&&![15,30,60,90,120,180].includes(selectedDur))?selectedDur:'';
+}
+
+// ==================== helper ====================
+function escH(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+// ==================== 启动 ====================
+load();
+if(data.setupDone){
+  document.getElementById('setupPage').style.display='none';
+  document.getElementById('mainPage').classList.add('show');
+  selectedDate=todayStr();isWorkday=!isWeekend(selectedDate);
+  if(data._overrides&&data._overrides[selectedDate]==='workday')isWorkday=true;
+  if(data._overrides&&data._overrides[selectedDate]==='weekend')isWorkday=false;
+  renderAll();
+}else{
+  document.getElementById('setupPage').style.display='block';
+  document.getElementById('mainPage').classList.remove('show');
+  if(!data.workdayBlocks)data.workdayBlocks=[...DEF_WORKDAY_BLOCKS];
+  if(!data.weekendBlocks)data.weekendBlocks=[...DEF_WEEKEND_BLOCKS];
+  if(!data.cats)data.cats=[...DEF_CATS];
+  if(!data.foodLunch)data.foodLunch=[...DEF_FOOD_LUNCH];
+  if(!data.foodDinner)data.foodDinner=[...DEF_FOOD_DINNER];
+  ensureFoodToday();
+  switchSetupMode('workday');renderSetupCats();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAddPanel();closeBlockDlg()}});
+</script>
+</body>
+</html>
