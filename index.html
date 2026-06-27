@@ -669,5 +669,8 @@ if(data.setupDone){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAddPanel();closeBlockDlg()}});
 </script>
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+</script>
 </body>
 </html>
