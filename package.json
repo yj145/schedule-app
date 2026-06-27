@@ -1,0 +1,18 @@
+{
+  "name": "schedule",
+  "version": "1.0.0",
+  "description": "智能日程表",
+  "private": true,
+  "scripts": {
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open android",
+    "build": "npx cap sync && npx cap copy"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/core": "^7.2.0",
+    "sharp": "^0.35.2"
+  }
+}
